@@ -19,6 +19,14 @@ variable "elasticsearch_transport_ports" {
   }
 }
 
+variable "elasticsearch_hostnames" {
+  default = {
+    "0" = "elasticsearch01"
+    "1" = "elasticsearch02"
+    "2" = "elasticsearch03"
+  }
+}
+
 resource "docker_network" "private_network" {
   name = "elastic_network"
 }
@@ -27,7 +35,7 @@ resource "docker_network" "private_network" {
 resource "docker_container" "elasticsearch" {
   count        = 3
   image        = "docker.elastic.co/elasticsearch/elasticsearch:6.2.4"
-  name         = "elasticsearch${count.index}"
+  name         = "${lookup(var.elasticsearch_hostnames, count.index)}"
   network_mode = "bridge"
   networks     = ["${docker_network.private_network.name}"]
 
@@ -35,7 +43,7 @@ resource "docker_container" "elasticsearch" {
     "cluster.name=nicemonitoring",
     "discovery.zen.minimum_master_nodes=2",
     "ELASTIC_PASSWORD=MagicWord",
-    "discovery.zen.ping.unicast.hosts=elasticsearch0,elasticsearch1,elasticsearch2",
+    "discovery.zen.ping.unicast.hosts=${lookup(var.elasticsearch_hostnames, 0)},${lookup(var.elasticsearch_hostnames, 1)},${lookup(var.elasticsearch_hostnames, 2)}",
   ]
 
   ports = [
@@ -57,7 +65,7 @@ resource "docker_container" "kibana" {
   networks     = ["${docker_network.private_network.name}"]
 
   env = [
-    "ELASTICSEARCH_URL=http://elasticsearch0:9200",
+    "ELASTICSEARCH_URL=http://${lookup(var.elasticsearch_hostnames, 0)}:9200",
   ]
 
   ports = [
